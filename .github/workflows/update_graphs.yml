@@ -1,0 +1,46 @@
+name: Update Graphs
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+  schedule:
+    - cron: "0 0 * * *" # Run workflow everyday at 12 AM
+
+jobs:
+  vax-count-by-state:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: actions/setup-python@v2
+        with:
+          python-version: "3.8"
+
+      - name: Cache pip
+        uses: actions/cache@v2
+        with:
+          # This path is specific to Ubuntu
+          path: ~/.cache/pip
+          # Look to see if there is a cache hit for the corresponding requirements file
+          key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+            ${{ runner.os }}-
+
+      - name: Install dependencies
+        run: pip3 install -r requirements.txt
+
+      - name: Fetch latest data & generate new graph
+        run: python3 main.py
+        
+      - id: get-date
+        run: echo "::set-output name=value::$(date --iso-8601)"
+
+      - uses: EndBug/add-and-commit@v7
+        with:
+          add: 'index.html'
+          default_author: github_actions
+          message: "bot: update data for ${{ steps.get-date.outputs.value }}"
